@@ -1473,7 +1473,8 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
                             startActivity(Intent(this, SessionActivity::class.java)
                                 .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
                                 .putExtra(SessionService.EXTRA_PROGRAM, com.droiddeck.launcher.runtime.FlatpakManager.LAUNCHER)
-                                .putExtra(SessionService.EXTRA_PROGRAM_ARGS, arrayOf(id)))
+                                .putExtra(SessionService.EXTRA_PROGRAM_ARGS, arrayOf(id))
+                                .putExtra(SessionService.EXTRA_DESKTOP_APP, true))
                         },
                         onRom = { g ->
                             val e = emulatorList.first { it.id == g.emulatorId }
@@ -2248,7 +2249,11 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
         if (homeAppSelected) HomePins.refresh(this)
         Thread({
             val apps = runCatching { HomeApp.launchableApps(this) }.getOrDefault(emptyList())
-            ui.post { if (seq == androidAppsListing) androidApps = apps }
+            ui.post {
+                if (seq != androidAppsListing) return@post
+                HomeHidden.hideNewDefaults(this, apps)
+                androidApps = apps
+            }
         }, "home-apps").start()
     }
 
@@ -2318,6 +2323,7 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
             .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
             .putExtra(SessionService.EXTRA_PROGRAM, command.first())
             .putExtra(SessionService.EXTRA_PROGRAM_ARGS, command.drop(1).toTypedArray())
+            .putExtra(SessionService.EXTRA_DESKTOP_APP, true)
         when {
             !SessionState.running -> startSessionOrWait(next)
             SessionState.mode == SessionService.MODE_RUN && SessionState.program == command.first() && SessionState.programArgs == command.drop(1) ->

@@ -393,6 +393,7 @@ class SessionService : Service() {
         pipTask = false
         SessionState.program = intent?.getStringExtra(EXTRA_PROGRAM)
         SessionState.programArgs = intent?.getStringArrayExtra(EXTRA_PROGRAM_ARGS)?.toList().orEmpty()
+        SessionState.desktopApp = SessionState.mode == MODE_RUN && intent?.getBooleanExtra(EXTRA_DESKTOP_APP, false) == true
         SessionState.steamUi = intent?.getStringExtra(EXTRA_STEAM_UI)
         SessionState.steamUrl = intent?.getStringExtra(EXTRA_STEAM_URL)
         val steamUrlGameId = SessionState.steamUrl
@@ -645,6 +646,7 @@ class SessionService : Service() {
             components.add(it)
         }
 
+        if (SessionState.desktopApp) guest.add("DD_DESKTOP_APP=1")
         guest.add("DD_WIDTH=" + size.first)
         guest.add("DD_HEIGHT=" + size.second)
         if (noSteamGame()) runCatching {
@@ -2700,12 +2702,14 @@ class SessionService : Service() {
         const val EXTRA_STEAM_UI = "steamUi"
         const val EXTRA_STEAM_URL = "steamUrl"
         const val EXTRA_GAME_ID = "gameId"
+        const val EXTRA_DESKTOP_APP = "desktopApp"
 
         fun start(
             context: Context, mode: String = MODE_STEAM, program: String? = null,
             steamUi: String? = null, steamUrl: String? = null, programArgs: Array<String>? = null,
             gameId: String? = null,
             displayId: Int = Display.DEFAULT_DISPLAY,
+            desktopApp: Boolean = false,
         ) {
             SessionState.activityDisplayId = displayId
             val intent = Intent(context, SessionService::class.java).putExtra(EXTRA_MODE, mode)
@@ -2716,6 +2720,7 @@ class SessionService : Service() {
             if (steamUi != null) intent.putExtra(EXTRA_STEAM_UI, steamUi)
             if (steamUrl != null) intent.putExtra(EXTRA_STEAM_URL, steamUrl)
             if (gameId != null) intent.putExtra(EXTRA_GAME_ID, gameId)
+            if (desktopApp) intent.putExtra(EXTRA_DESKTOP_APP, true)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
             else context.startService(intent)
         }

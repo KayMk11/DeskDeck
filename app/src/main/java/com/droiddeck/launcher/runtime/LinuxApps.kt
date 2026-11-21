@@ -31,6 +31,27 @@ object LinuxApps {
         "steamdeck-bigpicture.desktop",
     )
 
+    private val UTILITY_IDS = setOf(
+        "org.kde.ark.desktop", "org.kde.drkonqi.coredump.gui.desktop", "org.kde.khelpcenter.desktop", "org.kde.kinfocenter.desktop",
+        "org.kde.kdeconnect.app.desktop", "org.kde.kdeconnect.sms.desktop", "org.kde.kdeconnect-settings.desktop",
+        "org.kde.kdeconnect.nonplasma.desktop", "org.kde.kdeconnect.handler.desktop", "org.kde.plasma.emojier.desktop",
+        "org.kde.partitionmanager.desktop", "org.kde.kmenuedit.desktop", "org.kde.plasma-welcome.desktop",
+        "org.kde.kwalletmanager.desktop", "org.kde.kwalletmanager5.desktop", "org.kde.kuserfeedback-console.desktop",
+        "org.kde.plasma.themeexplorer.desktop", "org.kde.kcharselect.desktop", "org.freedesktop.IBus.Setup.desktop",
+        "avahi-discover.desktop", "bssh.desktop", "bvnc.desktop", "qv4l2.desktop", "qvidcap.desktop", "lstopo.desktop",
+        "foot-server.desktop", "footclient.desktop", "htop.desktop", "kdesystemsettings.desktop",
+    )
+    private val KEPT_SYSTEM = setOf("TerminalEmulator", "FileManager", "Monitor", "PackageManager")
+
+    /** System utilities a launcher grid has little use for; they start hidden and can be shown again. */
+    fun hiddenByDefault(entry: Entry): Boolean {
+        if (entry.id in UTILITY_IDS) return true
+        if (entry.id.startsWith("droiddeck-") && !entry.id.startsWith("droiddeck-app-") && !entry.id.startsWith("droiddeck-program-")) return true
+        val categories = entry.categories.toSet()
+        if (categories.any { it == "Settings" || it.endsWith("Settings") || it == "Documentation" }) return true
+        return "System" in categories && categories.none { it in KEPT_SYSTEM }
+    }
+
     fun scan(root: File, locale: Locale = Locale.getDefault()): List<Entry> {
         val byId = LinkedHashMap<String, Entry?>()
         for (data in DATA_DIRS) {

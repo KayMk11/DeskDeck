@@ -2485,6 +2485,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
         if (SessionState.running) SessionState.mode
         else intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
 
+    private fun desktopLike(): Boolean = when (loadingMode()) {
+        SessionService.MODE_DESKTOP -> true
+        SessionService.MODE_RUN -> if (SessionState.running) SessionState.desktopApp else intent.getBooleanExtra(SessionService.EXTRA_DESKTOP_APP, false)
+        else -> false
+    }
+
     private fun pausedTitle(): String = when (SessionState.mode) {
         SessionService.MODE_DESKTOP -> getString(R.string.session_desktop_paused)
         SessionService.MODE_RUN -> com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program)
@@ -2908,6 +2914,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
                 intent.getStringArrayExtra(SessionService.EXTRA_PROGRAM_ARGS),
                 intent.getStringExtra(SessionService.EXTRA_GAME_ID),
                 sessionActivityDisplayId,
+                intent.getBooleanExtra(SessionService.EXTRA_DESKTOP_APP, false),
             )
             intent.getStringExtra(EXTRA_PLAYED_GAME)?.let { com.droiddeck.launcher.frontend.Library.recordPlayed(this, it) }
         }
@@ -3028,8 +3035,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
         android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
     }
 
-    private fun displayMode(): String = SessionPrefs.displayMode(this,
-        intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM, intent.getStringExtra(SessionService.EXTRA_PROGRAM))
+    private fun displayMode(): String =
+        if (desktopLike()) SessionPrefs.displayMode(this, SessionService.MODE_DESKTOP, null)
+        else SessionPrefs.displayMode(this,
+            intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM, intent.getStringExtra(SessionService.EXTRA_PROGRAM))
 
     private fun outputSize(): Pair<Int, Int> =
         com.droiddeck.launcher.session.SessionDisplay.resolveChoice(com.droiddeck.launcher.session.SessionDisplay.panelSize(this),
@@ -3909,7 +3918,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
             steamSession = SessionState.mode == SessionService.MODE_STEAM,
             steamDesktopUi = SessionState.steamUi == "desktop",
         )) == com.droiddeck.launcher.input.TouchRouter.Route.TOUCHPAD
-        val mode = com.droiddeck.launcher.input.TouchGestureConfig.gamescopeRelativeMouse(wanted, mouseAttached(), touchpadRoute)
+        val mode = com.droiddeck.launcher.input.TouchGestureConfig.gamescopeRelativeMouse(wanted, mouseAttached() || trackpadAttached(), touchpadRoute)
         if (appliedRelativeMouseMode == mode) return
         if (AgentGuest.setGamescopeConvar(this, "relative_mouse", mode)) appliedRelativeMouseMode = mode
         else if (relativeMouseRetries++ < RELATIVE_MOUSE_MAX_RETRIES) uiHandler.postDelayed({ requestRelativeMouse() }, 2_000)
@@ -4313,7 +4322,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
         dualControlsProvisional = ::loading.isInitialized && loading.visible
     }
 
-    private val desktopSession get() = loadingMode() == SessionService.MODE_DESKTOP
+    private val desktopSession get() = desktopLike()
 
     private fun leaveDeckPanel() {
         if (secondScreenMode == SecondScreenMode.DECK_CONTROLS && !SessionState.deckPad) selectSecondScreenMode(secondScreenMode)
@@ -4551,7 +4560,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
 
     private fun refreshInputProfile() {
         val library = com.droiddeck.launcher.input.InputLibraries.read(this)
-        val desktop = loadingMode() == SessionService.MODE_DESKTOP
+        val desktop = desktopLike()
         inputProfile = library.compileActive(desktop, secondScreenMode.panel(this))
         stockInputProfile = library.compileStock(desktop, secondScreenMode.panel(this))
         primaryInputLayout = library.activeLayout(desktop, InputRole.PRIMARY)
@@ -4860,7 +4869,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
 
     private fun effectiveTouchMode(): String {
         val options = steamTouchOptions
-        if (options == null || steamTouchControls?.visibility != View.VISIBLE) return SessionPrefs.touchMode(this)
+        if (options == null || steamTouchControls?.visibility != View.VISIBLE) {
+            val chosen = SessionPrefs.touchMode(this)
+            return if (chosen == SessionPrefs.TOUCH_AUTO && desktopLike()) SessionPrefs.TOUCH_DIRECT else chosen
+        }
         return when {
             options.inputMode == com.droiddeck.launcher.input.SteamTouchConfig.INPUT_CONTROLLER -> SessionPrefs.TOUCH_OFF
             SessionPrefs.touchMode(this) == SessionPrefs.TOUCH_GESTURES -> SessionPrefs.TOUCH_GESTURES
@@ -5275,7 +5287,31 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
         return true
     }
 
+    private var trackpadScrollX = 0f
+    private var trackpadScrollY = 0f
+
+    // Android 14+ reports trackpad gestures as moves of the pointer with a classification instead of scroll events.
+    private fun onTrackpadGesture(event: MotionEvent): Boolean {
+        if (Build.VERSION.SDK_INT < 34) return false
+        return when (event.classification) {
+            MotionEvent.CLASSIFICATION_TWO_FINGER_SWIPE -> {
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) { trackpadScrollX = 0f; trackpadScrollY = 0f }
+                trackpadScrollX += event.getAxisValue(MotionEvent.AXIS_GESTURE_SCROLL_X_DISTANCE)
+                trackpadScrollY += event.getAxisValue(MotionEvent.AXIS_GESTURE_SCROLL_Y_DISTANCE)
+                val notch = TRACKPAD_SCROLL_NOTCH_DP * resources.displayMetrics.density
+                val down = (trackpadScrollY / notch).toInt()
+                if (down != 0) { trackpadScrollY -= down * notch; sendSceneWheel(down) }
+                val right = (trackpadScrollX / notch).toInt()
+                if (right != 0) { trackpadScrollX -= right * notch; sendSceneWheel(right, horizontal = true) }
+                true
+            }
+            MotionEvent.CLASSIFICATION_PINCH, CLASSIFICATION_MULTI_FINGER_SWIPE -> true
+            else -> false
+        }
+    }
+
     private fun onMouse(event: MotionEvent): Boolean {
+        if (onTrackpadGesture(event)) return true
         when (event.actionMasked) {
             MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_HOVER_ENTER ->
                 if (evdevMouseActive) sendMouseDelta(event.x, event.y) else movePointer(event.x, event.y, fromMouse = true)
@@ -5308,6 +5344,11 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
     private fun mouseAttached(): Boolean = usbMouse.active || InputDevice.getDeviceIds().any { id ->
         val d = InputDevice.getDevice(id)
         isHardwareMouse(d) && d?.supportsSource(InputDevice.SOURCE_TOUCHPAD) != true
+    }
+
+    private fun trackpadAttached(): Boolean = InputDevice.getDeviceIds().any { id ->
+        val d = InputDevice.getDevice(id)
+        isHardwareMouse(d) && d?.supportsSource(InputDevice.SOURCE_TOUCHPAD) == true
     }
 
     private fun externalMouseAttached(): Boolean {
@@ -5546,9 +5587,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
             SessionPrefs.OSC_STEAM_QAM -> true
             SessionPrefs.OSC_NEVER -> false
             SessionPrefs.OSC_STEAM_TOUCH -> SessionState.mode == SessionService.MODE_STEAM ||
-                (!PadBridge.anyControllerConnected() && SessionState.mode != SessionService.MODE_DESKTOP)
-            else -> !PadBridge.anyControllerConnected() && !SteamControllerBle.connected &&
-                SessionState.mode != SessionService.MODE_DESKTOP
+                (!PadBridge.anyControllerConnected() && !desktopLike())
+            else -> !PadBridge.anyControllerConnected() && !SteamControllerBle.connected && !desktopLike()
         }
         onScreenButtonsVisible = show
         val drawn = show && !keyboardCoversPad()
@@ -6783,6 +6823,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback, com.droidde
         private const val DESKTOP_GRAB_RETRY_MS = 30_000L
         private const val DESKTOP_GRAB_KEY_HOLD_MS = 40L
         private const val RELATIVE_MOUSE_MAX_RETRIES = 5
+        private const val TRACKPAD_SCROLL_NOTCH_DP = 24f
+        private const val CLASSIFICATION_MULTI_FINGER_SWIPE = 4
         private const val DRAWER_HAT_THRESHOLD = 0.5f
         private const val DRAWER_STICK_ENTER_THRESHOLD = 0.55f
         private const val DRAWER_STICK_EXIT_THRESHOLD = 0.35f

@@ -1560,6 +1560,10 @@
     <string name="apps_filter_downloaded">Downloaded</string>
     <string name="apps_filter_system">System</string>
     <string name="apps_filter_hidden">Hidden</string>
+    <string name="apps_filter_android">Android apps</string>
+    <string name="apps_filter_linux">Linux apps</string>
+    <string name="apps_choose">Choose which apps to show</string>
+    <string name="apps_choose_done">Done</string>
     <string name="apps_hide">Hide</string>
     <string name="apps_unhide">Show in apps</string>
     <string name="apps_shortcut_remove">Remove shortcut</string>
