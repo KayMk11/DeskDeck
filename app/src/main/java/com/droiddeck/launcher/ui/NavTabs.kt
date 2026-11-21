@@ -26,10 +26,10 @@ internal object DeveloperTools {
 
 internal object NavTabs {
     const val MORE = "more"
-    val ALL = listOf("steam", "desktop", "games", "downloads", "setup", "updates", "stores", "soundtracks", "components", "storage", "sync", "android-apps", "agent")
-    val DEFAULT_SHELVED = setOf("stores", "soundtracks", "components", "storage", "sync", "android-apps", "agent")
-    val DEFAULT_HIDDEN = setOf("android-apps", "agent")
-    private val SHELVED_WHEN_NEW = setOf("storage", "sync", "android-apps", "agent")
+    val ALL = listOf("android-apps", "desktop", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
+    val DEFAULT_SHELVED = setOf("components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
+    val DEFAULT_HIDDEN = setOf("steam", "games", "downloads", "stores", "soundtracks", "agent")
+    private val SHELVED_WHEN_NEW = setOf("storage", "sync", "agent")
     private val OLD_ORDER = listOf("steam", "games", "soundtracks", "stores", "downloads", "desktop", "agent", "components", "android-apps", "storage", "sync", "setup", "updates")
     private val OLD_SHELVED = setOf("soundtracks", "agent", "storage", "sync")
     private const val LAYOUT_VERSION = 2
@@ -73,7 +73,6 @@ internal object NavTabs {
             if (!legacy.stores) hide += setOf("stores", "downloads")
             if (!legacy.soundtracks) hide += "soundtracks"
             if (!legacy.agent) hide += "agent"
-            if (!com.droiddeck.launcher.HomeApp.isHomeScreenEnabled(context) || !com.droiddeck.launcher.HomeApp.isDefault(context)) hide += "android-apps"
             SessionPrefs.setNavTabHidden(context, hide)
         }
         SessionPrefs.finishTabSwitchMigration(context, LAYOUT_VERSION)

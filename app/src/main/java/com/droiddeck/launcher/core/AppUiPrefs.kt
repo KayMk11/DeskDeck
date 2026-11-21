@@ -39,7 +39,7 @@ object AppUiPrefs {
         context.getSharedPreferences("app-ui", Context.MODE_PRIVATE)
             .getString("home-page", null)
             .takeIf { value -> homePageOptions.any { it.first == value } }
-            ?: HOME_PAGE_STEAM
+            ?: HOME_PAGE_APPS
 
     fun setHomePage(context: Context, value: String) {
         require(homePageOptions.any { it.first == value })

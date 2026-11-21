@@ -69,15 +69,26 @@ esac
 python3 /usr/local/bin/droiddeck-open --install 2>&1 | sed 's/^/[open] /'
 export APPIMAGE_EXTRACT_AND_RUN=1
 [ -e /etc/xdg/kiorc ] || printf '[Executable scripts]\nbehaviourOnLaunch=execute\n' >/etc/xdg/kiorc 2>/dev/null
+cat > /usr/share/applications/droiddeck-return-android.desktop <<'ENTRY'
+[Desktop Entry]
+Name=Return to Android
+Comment=Log out of the desktop and go back to the Android home screen
+Exec=dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown org.kde.Shutdown.logout
+Icon=go-home
+Terminal=false
+Type=Application
+StartupNotify=false
+Categories=System;
+ENTRY
 desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null); [ -n "$desktop_dir" ] && [ "$desktop_dir" != "$HOME" ] || desktop_dir=$HOME/Desktop
 if [ ! -e "$HOME/.config/droiddeck-desktop-icons" ]; then
   mkdir -p "$desktop_dir" "$HOME/.config"
-  cp -f /usr/share/applications/droiddeck-return-gaming.desktop "$desktop_dir/Return.desktop" 2>/dev/null
+  cp -f /usr/share/applications/droiddeck-return-android.desktop "$desktop_dir/Android.desktop" 2>/dev/null
   cp -f /usr/share/applications/steamdeck-steam.desktop "$desktop_dir/steam.desktop" 2>/dev/null
   chmod +x "$desktop_dir"/*.desktop 2>/dev/null
   touch "$HOME/.config/droiddeck-desktop-icons"
 fi
-[ -f "$desktop_dir/Return.desktop" ] && cp -f /usr/share/applications/droiddeck-return-gaming.desktop "$desktop_dir/Return.desktop" 2>/dev/null
+[ -f "$desktop_dir/Android.desktop" ] && cp -f /usr/share/applications/droiddeck-return-android.desktop "$desktop_dir/Android.desktop" 2>/dev/null
 if command -v flatpak >/dev/null 2>&1 && [ ! -d /var/lib/pacman ]; then
   FLATPAK_BWRAP=/usr/local/bin/droiddeck-bwrap flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1 &
 fi
@@ -134,8 +145,4 @@ dbus-run-session -- startplasma-wayland
 rc=$?
 /usr/local/bin/droiddeck-pipewire stop
 echo "== droiddeck-desktop: Plasma ended ($rc)"
-if [ "$rc" -eq 0 ] && [ -z "${DD_BOTTOM_DESKTOP:-}" ]; then
-  /usr/local/bin/droiddeck-steam-launch bigpicture
-  sleep 30
-fi
 exit $rc
