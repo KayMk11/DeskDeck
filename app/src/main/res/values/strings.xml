@@ -1525,6 +1525,10 @@
     <string name="apps_icon_large">Large</string>
     <string name="apps_hide_names">Hide app names</string>
     <string name="apps_source_badges">Show Android and Linux badges</string>
+    <string name="setup_tab_advanced">Advanced</string>
+    <string name="advanced_group_programs">Programs</string>
+    <string name="advanced_add_program">Add a program</string>
+    <string name="advanced_add_program_hint">A script, an AppImage, a Linux or Windows program, or a Flatpak bundle. It joins the app grid.</string>
     <string name="apps_badge_linux">Linux app</string>
     <string name="apps_badge_android">Android app</string>
     <string name="apps_open_in_desktop">Open in the desktop</string>

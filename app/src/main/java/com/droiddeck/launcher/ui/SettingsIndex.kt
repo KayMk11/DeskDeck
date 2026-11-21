@@ -12,6 +12,7 @@ internal enum class SettingsSection(val key: String, @StringRes val title: Int) 
     CONTROLLER("controller", R.string.setup_tab_controller),
     GLASSES("glasses", R.string.setup_tab_glasses),
     LAUNCHER("launcher", R.string.setup_tab_launcher),
+    ADVANCED("advanced", R.string.setup_tab_advanced),
     DEVELOPER("developer", R.string.setup_tab_diagnostics);
 
     companion object {
@@ -114,6 +115,7 @@ internal object SettingsIndex {
         s(SettingsSection.LAUNCHER, R.string.setup_download_source, "mirror", "china"),
         s(SettingsSection.LAUNCHER, R.string.setup_download_proxy),
 
+        s(SettingsSection.ADVANCED, R.string.advanced_add_program, "script", "appimage", "exe", "elf", "program", "flatpak", "run"),
         s(SettingsSection.DEVELOPER, R.string.setup_latest_logs, "logs", "log", "bug", "report", "crash", "zip"),
         s(SettingsSection.DEVELOPER, R.string.setup_logs, "logs"),
         s(SettingsSection.DEVELOPER, R.string.setup_game_debug_logs, "logs", "wine", "proton"),

@@ -109,7 +109,6 @@ internal fun DesktopPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
     LaunchedEffect(s.ready) { com.droiddeck.launcher.store.StoreState.refresh(ctx) }
     val installed = s.emulators.filter { it.installed }
     val apps = UserAppsState.items
-    var adding by rememberSaveable { mutableStateOf(false) }
     val mode = SessionService.MODE_DESKTOP
     val tabs = DESKTOP_TABS.map { it to sheetTabLabel(it) }
     val open = if (s.desktopInstalled) stringResource(R.string.content_open_desktop) else stringResource(R.string.content_install_open_desktop)
@@ -149,8 +148,6 @@ internal fun DesktopPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
                 horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
             ) {
-                HeroIconButton(Icons.Outlined.Storefront, stringResource(R.string.flathub_name), FlathubTeal, "desktop:flathub") { at -> openFrom(at, null, "store") }
-                HeroIconButton(Icons.Filled.Add, stringResource(R.string.user_apps_add), null, "desktop:add") { if (!s.busy) adding = true }
                 if (s.desktopPresent) UninstallDesktop(enabled = !s.runtimeActionsBlocked, onUninstall = a.onRemoveDesktop)
             }
         },
@@ -162,7 +159,6 @@ internal fun DesktopPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
             ))
         },
     )
-    if (adding && !s.busy) AddAppDialog(s.ready, onDismiss = { adding = false }) { request, label -> UserAppsState.add(ctx, request, label) }
 }
 
 @Composable

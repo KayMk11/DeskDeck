@@ -26,7 +26,7 @@ internal object DeveloperTools {
 
 internal object NavTabs {
     const val MORE = "more"
-    val ALL = listOf("android-apps", "desktop", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
+    val ALL = listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
     val DEFAULT_SHELVED = setOf("components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
     val DEFAULT_HIDDEN = setOf("steam", "games", "downloads", "stores", "soundtracks", "agent")
     private val SHELVED_WHEN_NEW = setOf("storage", "sync", "agent")

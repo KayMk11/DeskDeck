@@ -93,6 +93,7 @@ private val CONTROLLER_TAB = SettingsSection.CONTROLLER.ordinal
 private val GLASSES_TAB = SettingsSection.GLASSES.ordinal
 private val LAUNCHER_TAB = SettingsSection.LAUNCHER.ordinal
 private val DEVELOPER_TAB = SettingsSection.DEVELOPER.ordinal
+private val ADVANCED_TAB = SettingsSection.ADVANCED.ordinal
 
 internal object SetupTabs {
     var openLauncher = false
@@ -572,6 +573,20 @@ internal fun SetupPanel(
                                 Column(Modifier.weight(1f)) { look() }
                                 Column(Modifier.weight(1f)) { device(); art(); download() }
                             } else Column { look(); device(); art(); download() }
+                        }
+                    }
+                    ADVANCED_TAB -> {
+                        val advancedContext = LocalContext.current
+                        var adding by rememberSaveable { mutableStateOf(false) }
+                        SettingsGroup(stringResource(R.string.advanced_group_programs)) {
+                            ActionRow(
+                                stringResource(R.string.advanced_add_program), stringResource(R.string.advanced_add_program_hint),
+                                stringResource(R.string.user_apps_add), onClick = { if (!s.busy) adding = true },
+                                modifier = Modifier.testTag("advanced-add-program"),
+                            )
+                        }
+                        if (adding && !s.busy) AddAppDialog(s.ready, onDismiss = { adding = false }) { request, label ->
+                            com.droiddeck.launcher.store.UserAppsState.add(advancedContext, request, label)
                         }
                     }
                     DEVELOPER_TAB -> {

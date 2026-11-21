@@ -271,7 +271,7 @@ private fun Content(
         SteamHome(s, a, modifier)
         return
     }
-    if (selected == "store") {
+    if (selected == "store" || selected == "flathub") {
         StorePage(s, a, modifier)
         return
     }

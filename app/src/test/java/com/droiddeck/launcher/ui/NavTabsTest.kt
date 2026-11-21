@@ -40,7 +40,7 @@ class NavTabsTest {
     }
 
     @Test fun aFreshInstallShowsTheDefaultBarMoreAndHiddenTabs() {
-        assertEquals(listOf("android-apps", "desktop", "setup", "updates", NavTabs.MORE), navigationKeys(state()))
+        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", NavTabs.MORE), navigationKeys(state()))
         assertEquals(listOf("components", "storage", "sync"), NavTabs.more(state()))
         listOf("steam", "games", "downloads", "stores", "soundtracks", "agent").forEach { assertEquals(it, TabPlace.HIDDEN, NavTabs.place(state(), it)) }
         assertFalse(com.droiddeck.launcher.agent.AgentTab.shown)
@@ -50,7 +50,7 @@ class NavTabsTest {
     @Test fun showingMusicOnceKeepsItShownAfterReload() {
         place("soundtracks", TabPlace.BAR)
         NavTabs.load(ctx)
-        assertEquals(listOf("android-apps", "desktop", "setup", "updates", "soundtracks", NavTabs.MORE), navigationKeys(state()))
+        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", "soundtracks", NavTabs.MORE), navigationKeys(state()))
     }
 
     @Test fun shelvedTabsLeaveTheBarAndAddMoreAtTheEnd() {
@@ -76,7 +76,7 @@ class NavTabsTest {
         NavTabs.reset(ctx)
         NavTabs.load(ctx)
         assertTrue(NavTabs.isDefault())
-        assertEquals(listOf("android-apps", "desktop", "setup", "updates", NavTabs.MORE), navigationKeys(state()))
+        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", NavTabs.MORE), navigationKeys(state()))
     }
 
     @Test fun anOldLayoutKeepsWhatItsSwitchesShowed() {
@@ -84,7 +84,7 @@ class NavTabsTest {
             .putBoolean("gameStoresEnabled", false).putBoolean("soundtracksEnabled", false).commit()
         NavTabs.load(ctx)
         val s = state()
-        assertEquals(listOf("steam", "games", "desktop", "components", "android-apps", "setup", "updates", NavTabs.MORE), navigationKeys(s))
+        assertEquals(listOf("steam", "games", "desktop", "flathub", "components", "android-apps", "setup", "updates", NavTabs.MORE), navigationKeys(s))
         assertEquals(listOf("storage", "sync"), NavTabs.more(s))
         listOf("stores", "downloads", "soundtracks", "agent").forEach { assertEquals(it, TabPlace.HIDDEN, NavTabs.place(s, it)) }
         val prefs = ctx.getSharedPreferences("session", Context.MODE_PRIVATE)
@@ -112,15 +112,15 @@ class NavTabsTest {
 
     @Test fun movingSwapsWithTheNextVisibleTabAndPersists() {
         moveTab("desktop", -1)
-        assertEquals(listOf("desktop", "android-apps", "setup", "updates"), navigationKeys(state()).take(4))
+        assertEquals(listOf("desktop", "android-apps", "flathub", "setup"), navigationKeys(state()).take(4))
         NavTabs.load(ctx)
-        assertEquals(listOf("desktop", "android-apps", "setup", "updates"), navigationKeys(state()).take(4))
+        assertEquals(listOf("desktop", "android-apps", "flathub", "setup"), navigationKeys(state()).take(4))
     }
 
     @Test fun tabsMissingFromASavedOrderSlotInAfterTheirDefaultNeighbour() {
-        assertEquals(listOf("android-apps", "desktop", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent"),
+        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent"),
             NavTabs.arrange(listOf("updates", "steam")))
-        assertEquals(listOf("games", "downloads", "steam", "setup", "stores", "soundtracks", "agent", "desktop", "components", "storage", "sync", "android-apps", "updates"),
+        assertEquals(listOf("games", "downloads", "steam", "setup", "stores", "soundtracks", "agent", "desktop", "flathub", "components", "storage", "sync", "android-apps", "updates"),
             NavTabs.arrange(listOf("games", "steam", "setup", "stores", "desktop", "components", "android-apps", "updates", "bogus")))
     }
 
