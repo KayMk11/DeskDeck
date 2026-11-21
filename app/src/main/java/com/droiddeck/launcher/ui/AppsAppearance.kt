@@ -107,6 +107,7 @@ private fun StepOutScope.AppearanceRows(a: FrontEndActions) {
             ) { AppsGrid.setSpacing(ctx, it) }
         }
         ToggleRow(host, "app-names", stringResource(R.string.apps_hide_names), null, !AppsGrid.labels) { AppsGrid.setLabels(ctx, !it) }
+        ToggleRow(host, "app-badges", stringResource(R.string.apps_source_badges), null, AppsGrid.badges) { AppsGrid.setBadges(ctx, it) }
         if (hasBack) ToggleRow(host, "app-colors", stringResource(R.string.apps_icon_app_colors), null, appColors) {
             appColors = it
             IconPack.setAppColors(ctx, it)

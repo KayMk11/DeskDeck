@@ -1132,6 +1132,52 @@ def run_exec(req):
             "seconds": round(time.monotonic() - started, 3), "stdout": text("stdout"), "stderr": text("stderr")}
 
 
+SESSION_SHELLS = ("plasmashell", "kwin_wayland")
+
+
+def desktop_session_env(proc_root="/proc"):
+    # kwin_wayland itself sees the app compositor's display; Plasma's children get kwin's.
+    found = {}
+    for entry in os.scandir(proc_root):
+        if not entry.name.isdigit():
+            continue
+        try:
+            with open(os.path.join(entry.path, "comm"), encoding="utf-8") as f:
+                comm = f.read().strip()
+            if comm not in SESSION_SHELLS or comm in found:
+                continue
+            with open(os.path.join(entry.path, "environ"), "rb") as f:
+                raw = f.read()
+        except OSError:
+            continue
+        env = dict(item.split("=", 1) for item in raw.decode("utf-8", "replace").split("\0") if "=" in item)
+        if env.get("DBUS_SESSION_BUS_ADDRESS"):
+            found[comm] = env
+    return found.get("plasmashell") or found.get("kwin_wayland")
+
+
+def run_launch(req, proc_root="/proc"):
+    argv = req.get("argv")
+    if not isinstance(argv, list) or not argv or not all(isinstance(a, str) and a and "\0" not in a for a in argv):
+        raise AgentError("INVALID_REQUEST", "launch needs argv, a non-empty list of strings")
+    cwd = req.get("cwd")
+    if cwd is not None and (not isinstance(cwd, str) or "\0" in cwd):
+        raise AgentError("INVALID_REQUEST", "cwd must be a string")
+    env = desktop_session_env(proc_root)
+    if env is None:
+        raise AgentError("NO_DESKTOP", "The desktop is not running")
+    env.pop("DESKTOP_STARTUP_ID", None)
+    try:
+        proc = subprocess.Popen(
+            argv, cwd=cwd if cwd and os.path.isdir(cwd) else env.get("HOME") or None, env=env, start_new_session=True,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except OSError as e:
+        raise AgentError("EXEC_FAILED", "%s: %s" % (argv[0], e))
+    threading.Thread(target=proc.wait, daemon=True).start()
+    return {"pid": proc.pid}
+
+
 def request_timeout(req, default):
     try:
         timeout = float(req.get("timeout", default))
@@ -1148,6 +1194,8 @@ def handle(agent_dir, req):
         return {"pid": os.getpid(), "version": VERSION, "displays": displays()}
     if kind == "exec":
         return run_exec(req)
+    if kind == "launch":
+        return run_launch(req)
     if kind == "focus":
         return focus_snapshot()
     if kind == "cdp":

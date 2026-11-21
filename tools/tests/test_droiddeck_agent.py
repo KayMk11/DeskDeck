@@ -570,6 +570,45 @@ class AgentTest(unittest.TestCase):
         self.assertIn(child.pid, agent.game_pids(424242))
 
 
+class DesktopLaunchTest(unittest.TestCase):
+
+    def setUp(self):
+        self.proc = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.proc)
+        self.out = self.proc / "out"
+
+    def process(self, pid, comm, env):
+        d = self.proc / str(pid)
+        d.mkdir()
+        (d / "comm").write_text(comm + "\n")
+        (d / "environ").write_bytes(b"\0".join(("%s=%s" % kv).encode() for kv in env.items()) + b"\0")
+
+    def test_launch_runs_detached_in_the_plasma_session_environment(self):
+        self.process(40, "kwin_wayland", {"WAYLAND_DISPLAY": "wayland-0", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/k"})
+        self.process(41, "plasmashell", {"WAYLAND_DISPLAY": "wayland-1", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/p",
+                                         "PATH": os.environ["PATH"], "HOME": str(self.proc)})
+        answer = agent.run_launch({"argv": ["sh", "-c", 'printf %s "$WAYLAND_DISPLAY $DBUS_SESSION_BUS_ADDRESS" > "$0"', str(self.out)]},
+                                  proc_root=str(self.proc))
+        self.assertIsInstance(answer["pid"], int)
+        deadline = time.monotonic() + 5
+        while not self.out.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertEqual("wayland-1 unix:path=/p", self.out.read_text())
+
+    def test_kwin_is_the_fallback_and_a_shell_without_a_bus_is_skipped(self):
+        self.process(40, "plasmashell", {"WAYLAND_DISPLAY": "wayland-1"})
+        self.process(41, "kwin_wayland", {"WAYLAND_DISPLAY": "wayland-0", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/k"})
+        self.assertEqual("unix:path=/k", agent.desktop_session_env(str(self.proc))["DBUS_SESSION_BUS_ADDRESS"])
+
+    def test_launch_without_a_desktop_or_with_bad_argv_is_refused(self):
+        with self.assertRaises(agent.AgentError) as e:
+            agent.run_launch({"argv": ["true"]}, proc_root=str(self.proc))
+        self.assertEqual("NO_DESKTOP", e.exception.code)
+        for argv in (None, [], [""], ["a\0b"], [1]):
+            with self.assertRaises(agent.AgentError):
+                agent.run_launch({"argv": argv}, proc_root=str(self.proc))
+
+
 class SteamKeyboardTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
