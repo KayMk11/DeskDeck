@@ -97,6 +97,11 @@ def addonPacks = ['proot', 'directaudio', 'tracking', 'xbox', 'comet', 'butler',
     def pack = file("build/packs/${name}.tar.zst")
     if (!pack.isFile()) {
         if (ciBuild) throw new GradleException("Add-on pack ${pack} is missing: run tools/packs/build.sh app/build/packs")
+        def pin = file("build/packs/${name}.pin")
+        if (pin.isFile()) {
+            def fields = pin.text.trim().split(/\s+/)
+            return [(name): [sha256: fields[0], size: fields[1] as long]]
+        }
         if (name == 'proot' && prootPackPin.PROOT_PACK_SHA256) {
             return [(name): [sha256: prootPackPin.PROOT_PACK_SHA256, size: (prootPackPin.PROOT_PACK_SIZE ?: '0') as long]]
         }

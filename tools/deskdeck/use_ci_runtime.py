@@ -8,9 +8,11 @@ helper scripts from this checkout are copied over the donor's afterwards, so loc
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 from zipfile import ZipFile
@@ -69,6 +71,34 @@ def extract(package, name, target):
         shutil.copyfileobj(source, out)
 
 
+def pack_pins(package):
+    """Writes the add-on pack checksums the donor was built with, so this build downloads the same packs."""
+    tools = sorted((Path.home() / 'Android/Sdk/build-tools').glob('*/dexdump'))
+    if not tools:
+        raise SystemExit('dexdump not found under ~/Android/Sdk/build-tools')
+    fields, name = {}, None
+    with tempfile.TemporaryDirectory() as tmp:
+        for dex in [n for n in package.namelist() if n.startswith('classes') and n.endswith('.dex')]:
+            extract(package, dex, Path(tmp) / dex)
+            dump = subprocess.run([str(tools[-1]), str(Path(tmp) / dex)], capture_output=True, text=True, errors="replace").stdout
+            inside = False
+            for line in dump.splitlines():
+                if 'Class descriptor' in line:
+                    inside = "'Lcom/droiddeck/launcher/BuildConfig;'" in line
+                elif inside and (m := re.match(r"\s+name\s+: '(PACK_\w+)'", line)):
+                    name = m.group(1)
+                elif inside and name and (m := re.match(r'\s+value\s+: "?([^"]*)"?$', line)):
+                    fields[name] = m.group(1)
+                    name = None
+    packs = ROOT / 'app/build/packs'
+    packs.mkdir(parents=True, exist_ok=True)
+    for key, sha in fields.items():
+        if key.endswith('_SHA256') and sha:
+            pack = key.removeprefix('PACK_').removesuffix('_SHA256').lower()
+            (packs / f'{pack}.pin').write_text(f"{sha} {fields.get(key.replace('_SHA256', '_SIZE'), '0')}\n")
+    return sorted(k.removeprefix('PACK_').removesuffix('_SHA256').lower() for k in fields if k.endswith('_SHA256'))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit', help='upstream commit to take the runtime from (default: merge base with origin/main)')
@@ -88,11 +118,12 @@ def main():
             extract(package, name, PREPARED / name.removeprefix('assets/'))
         for library in LIBRARIES:
             extract(package, 'lib/arm64-v8a/' + library, MAIN / 'jniLibs/arm64-v8a' / library)
+        pinned = pack_pins(package)
     for source, asset in source_assets().items():
         target = MAIN / asset
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
-    print(f'runtime inputs from upstream {commit[:9]} ({path.name}) are in place')
+    print(f'runtime inputs from upstream {commit[:9]} ({path.name}) are in place; packs pinned: {", ".join(pinned)}')
 
 
 if __name__ == '__main__':
