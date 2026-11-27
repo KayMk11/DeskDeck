@@ -21,6 +21,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         com.droiddeck.launcher.runtime.NativeGuest.init(this)
+        com.droiddeck.launcher.session.Onboarding.attach(this)
         Thread({ runCatching { EnhancedSessionLogShare.cleanupAbandonedStages(this) } }, "diagnostic-stage-cleanup").start()
         com.droiddeck.launcher.ui.Themes.loadGradient(this)
         com.droiddeck.launcher.ui.BuildWatermark.install(this)
@@ -46,6 +47,7 @@ class App : Application() {
         com.droiddeck.launcher.input.ShortcutsRelay.Holder.install(this)
         com.droiddeck.launcher.agent.AgentHost.refresh(this)
         com.droiddeck.launcher.ui.NavTabs.load(this)
+        com.droiddeck.launcher.ui.DrawerPages.load(this)
         com.droiddeck.launcher.ui.DeveloperTools.load(this)
         com.droiddeck.launcher.ui.AgentPet.install(this)
         if (com.droiddeck.launcher.agent.AgentTab.visible) com.droiddeck.launcher.lab.LabNotice.openOnInstall = "agent"
@@ -53,7 +55,7 @@ class App : Application() {
         com.droiddeck.launcher.session.QuestExperimental.initialize(this)
         com.droiddeck.launcher.session.SessionPrefs.applyNtsyncDefault(this)
         com.droiddeck.launcher.session.SessionPrefs.settleGpuDriverMode(this)
-        com.droiddeck.launcher.session.SessionPrefs.settleStoresTabOrder(this, com.droiddeck.launcher.stores.Store.entries.map { it.id })
+        com.droiddeck.launcher.session.SessionPrefs.settleStoresTabOrder(this, com.droiddeck.launcher.stores.Store.tabbed.map { it.id })
         com.droiddeck.launcher.update.AppUpdates.init(this)
         com.droiddeck.launcher.update.UpdateWatch.sync(this, com.droiddeck.launcher.update.AppUpdates.follow(this, null))
         com.droiddeck.launcher.core.DownloadSource.init(this)
@@ -78,6 +80,7 @@ class App : Application() {
         com.droiddeck.launcher.stores.ea.EaBackend.app = this
         com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.ea.EaBackend)
         com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.rockstar.RockstarBackend)
+        com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.steam.SteamBackend)
     }
 
     private fun prefetchAddonPacks() {

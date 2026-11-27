@@ -135,6 +135,7 @@ object SessionState {
     @Volatile var padBridge: com.droiddeck.launcher.input.PadBridge? = null
 
     @Volatile var secondScreenMode = com.droiddeck.launcher.input.SecondScreenMode.NONE
+    @Volatile var bottomMenu = false
     @Volatile var secondScreenDisplay = -1
     @Volatile var secondScreenAutoOpened = false
     @Volatile var secondScreenProvisional = false
@@ -148,6 +149,9 @@ object SessionState {
 
     @Volatile
     var outputSize: Pair<Int, Int> = Pair(1920, 1080)
+
+    @Volatile
+    var followScales: Pair<Float?, Float?> = null to null
 
     @Volatile
     var followScreen = false

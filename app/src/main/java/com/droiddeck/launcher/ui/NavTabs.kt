@@ -26,10 +26,10 @@ internal object DeveloperTools {
 
 internal object NavTabs {
     const val MORE = "more"
-    val ALL = listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
-    val DEFAULT_SHELVED = setOf("components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent")
-    val DEFAULT_HIDDEN = setOf("steam", "games", "downloads", "stores", "soundtracks", "agent")
-    private val SHELVED_WHEN_NEW = setOf("storage", "sync", "agent")
+    val ALL = listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
+    val DEFAULT_SHELVED = setOf("components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
+    val DEFAULT_HIDDEN = setOf("steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
+    private val SHELVED_WHEN_NEW = setOf("storage", "sync", "decky", "boot-movies", "agent")
     private val OLD_ORDER = listOf("steam", "games", "soundtracks", "stores", "downloads", "desktop", "agent", "components", "android-apps", "storage", "sync", "setup", "updates")
     private val OLD_SHELVED = setOf("soundtracks", "agent", "storage", "sync")
     private const val LAYOUT_VERSION = 2
@@ -92,6 +92,15 @@ internal object NavTabs {
     fun available(s: FrontEndState, key: String): Boolean = when (key) {
         "agent" -> AgentHost.available
         else -> true
+    }
+
+    // Apps is DeskDeck's main page and lists apps whether or not DeskDeck is the home app, so becoming the
+    // home app reveals it and leaving that role never hides it.
+    fun syncHomeApps(context: Context, homeSelected: Boolean) {
+        val seen = SessionPrefs.appsTabHomeSeen(context)
+        SessionPrefs.setAppsTabHomeSeen(context, homeSelected)
+        if (seen == homeSelected || !homeSelected) return
+        setHidden(context, "android-apps", false)
     }
 
     fun hideable(key: String) = key != "setup"

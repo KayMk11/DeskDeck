@@ -42,9 +42,23 @@ class NavTabsTest {
     @Test fun aFreshInstallShowsTheDefaultBarMoreAndHiddenTabs() {
         assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", NavTabs.MORE), navigationKeys(state()))
         assertEquals(listOf("components", "storage", "sync"), NavTabs.more(state()))
-        listOf("steam", "games", "downloads", "stores", "soundtracks", "agent").forEach { assertEquals(it, TabPlace.HIDDEN, NavTabs.place(state(), it)) }
+        listOf("steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent").forEach { assertEquals(it, TabPlace.HIDDEN, NavTabs.place(state(), it)) }
         assertFalse(com.droiddeck.launcher.agent.AgentTab.shown)
         assertTrue(NavTabs.isDefault())
+    }
+
+    @Test fun becomingTheHomeAppRevealsAppsAndLeavingThatRoleNeverHidesIt() {
+        NavTabs.syncHomeApps(ctx, false)
+        assertEquals(TabPlace.BAR, NavTabs.place(state(), "android-apps"))
+        NavTabs.setHidden(ctx, "android-apps", true)
+        NavTabs.syncHomeApps(ctx, true)
+        assertEquals(TabPlace.BAR, NavTabs.place(state(), "android-apps"))
+        NavTabs.setHidden(ctx, "android-apps", true)
+        NavTabs.syncHomeApps(ctx, true)
+        assertEquals(TabPlace.HIDDEN, NavTabs.place(state(), "android-apps"))
+        NavTabs.setHidden(ctx, "android-apps", false)
+        NavTabs.syncHomeApps(ctx, false)
+        assertEquals(TabPlace.BAR, NavTabs.place(state(), "android-apps"))
     }
 
     @Test fun showingMusicOnceKeepsItShownAfterReload() {
@@ -118,9 +132,9 @@ class NavTabsTest {
     }
 
     @Test fun tabsMissingFromASavedOrderSlotInAfterTheirDefaultNeighbour() {
-        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "agent"),
+        assertEquals(listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent"),
             NavTabs.arrange(listOf("updates", "steam")))
-        assertEquals(listOf("games", "downloads", "steam", "setup", "stores", "soundtracks", "agent", "desktop", "flathub", "components", "storage", "sync", "android-apps", "updates"),
+        assertEquals(listOf("games", "downloads", "steam", "setup", "stores", "soundtracks", "decky", "boot-movies", "agent", "desktop", "flathub", "components", "storage", "sync", "android-apps", "updates"),
             NavTabs.arrange(listOf("games", "steam", "setup", "stores", "desktop", "components", "android-apps", "updates", "bogus")))
     }
 
@@ -218,12 +232,12 @@ class NavTabsTest {
                 }
             }
         }
-        val last = navigationKeys(state()).last { it != NavTabs.MORE }
+        val last = NavTabs.listed(state()).last { it !in NavTabs.shelved }
         compose.onNodeWithTag("tab-row-$last").requestFocus()
         compose.onNodeWithTag("tab-row-$last").performKeyPress(pad(android.view.KeyEvent.KEYCODE_BUTTON_Y))
         compose.onNodeWithTag("tab-row-$last").performKeyPress(pad(android.view.KeyEvent.KEYCODE_DPAD_DOWN))
         compose.onNodeWithTag("tab-row-$last").performKeyPress(pad(android.view.KeyEvent.KEYCODE_BUTTON_Y))
-        compose.runOnIdle { assertEquals(last, NavTabs.more(state()).first()) }
+        compose.runOnIdle { assertTrue(last in NavTabs.shelved) }
         compose.onNodeWithTag("tab-shown-desktop").performClick()
         compose.runOnIdle { assertFalse("desktop" in navigationKeys(state())) }
         compose.onNodeWithTag("tab-shown-setup").performClick()
@@ -261,7 +275,7 @@ class NavTabsTest {
         onSteamSettings = {}, onDesktopSettings = {}, onInstallPackage = {}, onRemovePackage = {},
         onRuntime = {}, onFrameGenPick = {}, onImportLossless = {}, onProtons = {}, onComponents = {},
         onPerformance = {}, onRoms = {}, onFiles = {}, onLogs = {}, onOffline = {},
-        onWirelessAdbPair = { _, _, _, _ -> }, onWirelessAdbApply = { _, _, _, _ -> },
+        
         onSetPhantomProcessLimit = { _, _ -> }, onRemoveDesktop = {},
     )
 }

@@ -207,9 +207,11 @@ object DeviceReport {
         k("refresh_rate_mode", runCatching { Settings.Secure.getString(context.contentResolver, "refresh_rate_mode") }.getOrNull() ?: "not set")
         val panelSize = com.droiddeck.launcher.session.SessionDisplay.panelSize(context)
         for ((label, mode) in listOf("Resolution (Steam)" to SessionService.MODE_STEAM, "Resolution (Desktop)" to SessionService.MODE_DESKTOP)) {
-            val choice = SessionPrefs.resolutionChoice(context, mode, panelSize)
-            val size = com.droiddeck.launcher.session.SessionDisplay.resolveChoice(panelSize, choice)
-            k(label, "$choice (${size.first}x${size.second})")
+            for ((suffix, portrait) in listOf("landscape" to false, "portrait" to true)) {
+                val choice = SessionPrefs.resolutionChoice(context, mode, panelSize, portrait)
+                val size = com.droiddeck.launcher.session.SessionDisplay.resolveChoice(panelSize, choice, portrait)
+                k("$label $suffix", "$choice (${size.first}x${size.second})")
+            }
         }
         k("Foldable", context.packageManager.hasSystemFeature("android.hardware.sensor.hinge_angle"))
 
@@ -291,6 +293,7 @@ object DeviceReport {
         k("Stretch 16:9 to panel", SessionPrefs.stretch16x9(context))
         k("Avoid notch", SessionPrefs.avoidNotch(context))
         k("Return to launcher after a game", SessionPrefs.returnAfterGame(context))
+        k("Valve Proton only when needed", SessionPrefs.valveProtonOnDemand(context))
         k("Microphone", SessionPrefs.micEnabled(context))
         k("On-screen controls", SessionPrefs.oscMode(context))
         k("Touch mode", SessionPrefs.touchMode(context))
