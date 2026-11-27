@@ -4,17 +4,37 @@ Work on the `productivity` branch. Upstream DroidDeck is the `upstream` remote.
 
 ## Setting up a new dev machine
 
-1. Clone your DeskDeck repo, check out `productivity`, then run `git submodule update --init external/MaliBridge`.
-2. Install Java 17 and the Android SDK. Gradle installs the platform, build tools and NDK it needs on the first run.
+1. Clone your DeskDeck repo, check out `productivity`, add the upstream remote
+   (`git remote add upstream https://github.com/Droid-Deck/DroidDeck.git`), then run `git submodule update --init external/MaliBridge`.
+2. Install Java 17 and the Android SDK. Neither needs root:
+   - Java 17: Fedora 45 doesn't package it, so unpack Temurin 17 into `~/.local/opt/jdk-17`.
+   - Android: unpack the command-line tools into `~/Android/Sdk/cmdline-tools/latest`, accept the licences, and install
+     `platform-tools`, `platforms;android-34` and `build-tools;34.0.0`. `use_ci_runtime.py` needs `dexdump` from build-tools
+     before Gradle ever runs. Gradle installs the NDK on the first build.
+   - Export `JAVA_HOME`, `ANDROID_HOME` and the `platform-tools` path in `~/.bashrc`, and write `sdk.dir` to `local.properties`.
+   - With 32 GB, raise the heap in `~/.gradle/gradle.properties`: `org.gradle.jvmargs=-Xmx8g`, `kotlin.daemon.jvmargs=-Xmx4g`.
 3. Build:
    ```bash
    python3 tools/deskdeck/use_ci_runtime.py
    ./gradlew -PskipRust=true -x verifyRuntimeInputs :app:assembleRelease
    ```
-   The script fills in the prebuilt runtime inputs from upstream's CI build of the merge base, so Docker, Go, MinGW and `gh` aren't needed.
-   After rebasing onto newer upstream, rerun it; it needs a `main` commit that upstream CI has built.
+   The script fills in the prebuilt runtime inputs from upstream's CI build of the merge base with `origin/main`, so Docker, Go, MinGW and `gh` aren't needed.
+   It leaves five untracked `.so` files in `app/src/main/jniLibs/arm64-v8a/`; don't commit them.
+   If IPv6 to GitHub times out (it does on the home network), Python gives up before trying IPv4. Run the script with IPv4 forced,
+   and pass `JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true` to Gradle, or add `precedence ::ffff:0:0/96 100` to `/etc/gai.conf`.
 4. Install on the tablet: `adb install --user 0 -r app/build/outputs/apk/release/app-release.apk`. Samsung's Secure Folder blocks an install for all users.
-5. Run the unit tests once. They weren't run on commit `9c3b09c0f`. The full suite needs a lot of memory.
+   The release key in `keystore/` matches the installed build, so this updates in place.
+
+A clean build takes about 7 minutes and the Kotlin unit tests about 5 on the 8700GE.
+
+## Syncing with upstream
+
+Merge `upstream/main` whole rather than cherry-picking: the runtime binaries come from upstream CI's build of the merge base,
+so a partial pick leaves Kotlin and binaries out of step. Merge often, while the conflicts are small.
+1. Fast-forward the fork's `main` to `upstream/main`, then merge it into `productivity` in a worktree.
+2. Check that the catalog has a CI build of that commit, rerun `use_ci_runtime.py`, build, and run
+   `./gradlew -PskipRust=true :app:testDebugUnitTest`. Compare with the failures before the merge.
+3. Try it on the tablet before pushing: touch and trackpad, Linux apps from the grid, Plasma log in and out.
 
 ## Next up
 
@@ -89,6 +109,11 @@ Each Linux window as its own Android/DeX window, so Linux apps sit in the taskba
 - **Tidy the Settings overview:** move or hide the "Steam integration" group.
 - **Launch speed:** opening a standalone app takes about 3 s. Profile `droiddeck-session` (fonts, `wayland-info` polling).
 - **Translations:** the strings added in this fork are English-only.
+
+## Done (2026-11-28)
+- New dev machine (8700GE, 32 GB) set up. Kotlin unit tests run: 4,784 pass on `acffa40f`.
+- Merged 217 upstream commits (to `049ded18`). Upstream's Decky and Boot movies tabs are hidden by default, and leaving the
+  home-app role no longer hides Apps. Touch, trackpad and Plasma confirmed on the Tab S9.
 
 ## Done (2026-11-22)
 - Installs as DeskDeck alongside vanilla DroidDeck. Desktop-first tabs, and Steam is reached from the desktop.
