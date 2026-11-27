@@ -99,7 +99,7 @@ class NavTabsTest {
         NavTabs.load(ctx)
         val s = state()
         assertEquals(listOf("steam", "games", "desktop", "flathub", "components", "android-apps", "setup", "updates", NavTabs.MORE), navigationKeys(s))
-        assertEquals(listOf("storage", "sync"), NavTabs.more(s))
+        assertEquals(listOf("decky", "boot-movies", "storage", "sync"), NavTabs.more(s))
         listOf("stores", "downloads", "soundtracks", "agent").forEach { assertEquals(it, TabPlace.HIDDEN, NavTabs.place(s, it)) }
         val prefs = ctx.getSharedPreferences("session", Context.MODE_PRIVATE)
         assertFalse(prefs.contains("gameStoresEnabled"))
