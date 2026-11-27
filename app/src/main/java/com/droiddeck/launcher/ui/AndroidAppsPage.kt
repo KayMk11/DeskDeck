@@ -124,6 +124,12 @@ import com.droiddeck.launcher.HomeWidgets
 import com.droiddeck.launcher.R
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.DesktopWindows
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material.icons.filled.VisibilityOff
 
 private sealed interface AppEntry : AppEntryKey {
     val key: String
@@ -189,7 +195,9 @@ internal object AppsView {
     const val DOWNLOADED = "downloaded"
     const val SYSTEM = "system"
     const val HIDDEN = "hidden"
-    val FILTERS = listOf(ALL, GAMES, DOWNLOADED, SYSTEM, HIDDEN)
+    const val ANDROID = "android"
+    const val LINUX = "linux"
+    val FILTERS = listOf(ALL, ANDROID, LINUX, GAMES, DOWNLOADED, SYSTEM, HIDDEN)
     const val NAME_ASC = "nameAsc"
     const val NAME_DESC = "nameDesc"
     const val INSTALLED = "installed"
@@ -198,6 +206,7 @@ internal object AppsView {
 
     var filter by mutableStateOf(ALL)
     var sort by mutableStateOf(NAME_ASC)
+    var choosing by mutableStateOf(false)
     private var loaded = false
 
     private fun prefs(context: Context) = context.getSharedPreferences("home_launcher", Context.MODE_PRIVATE)
@@ -222,12 +231,14 @@ internal object AppsView {
 
     fun keeps(app: HomeApp.LaunchableApp): Boolean {
         val hidden = app.key in HomeHidden.keys
-        return when (filter) {
-            HIDDEN -> hidden
-            GAMES -> !hidden && app.game
-            DOWNLOADED -> !hidden && !app.system
-            SYSTEM -> !hidden && app.system
-            else -> !hidden
+        if (filter == HIDDEN) return hidden
+        return (choosing || !hidden) && when (filter) {
+            ANDROID -> app.linux == null
+            LINUX -> app.linux != null
+            GAMES -> app.game
+            DOWNLOADED -> !app.system
+            SYSTEM -> app.system
+            else -> true
         }
     }
 
@@ -255,6 +266,8 @@ internal object AppsGrid {
         private set
     var spacing by mutableStateOf(NORMAL)
         private set
+    var badges by mutableStateOf(true)
+        private set
 
     private fun prefs(context: Context) = context.getSharedPreferences("home_launcher", Context.MODE_PRIVATE)
 
@@ -263,6 +276,12 @@ internal object AppsGrid {
         labels = p.getBoolean("grid_labels", true)
         iconDp = p.getInt("grid_icon", MEDIUM).takeIf { it in ICON_SIZES } ?: MEDIUM
         spacing = p.getInt("grid_spacing", NORMAL).takeIf { it in SPACINGS } ?: NORMAL
+        badges = p.getBoolean("grid_badges", true)
+    }
+
+    fun setBadges(context: Context, value: Boolean) {
+        badges = value
+        prefs(context).edit().putBoolean("grid_badges", value).apply()
     }
 
     fun setLabels(context: Context, value: Boolean) {
@@ -290,6 +309,24 @@ internal interface AppEntryKey {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AndroidAppsPage(s: FrontEndState, a: FrontEndActions, modifier: Modifier, onLaunch: (HomeApp.LaunchableApp) -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalLinuxOpen provides a.onLinuxApp) {
+        Box(modifier) {
+            AppsPageBody(s, a, Modifier.fillMaxSize(), onLaunch)
+            androidx.compose.material3.ExtendedFloatingActionButton(
+                onClick = a.onDesktop,
+                icon = { androidx.compose.material3.Icon(Icons.Filled.DesktopWindows, null) },
+                text = { Text(stringResource(R.string.rail_desktop)) },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).testTag("apps-desktop"),
+            )
+        }
+    }
+}
+
+private val LocalLinuxOpen = androidx.compose.runtime.staticCompositionLocalOf<(HomeApp.LaunchableApp, Boolean?) -> Unit> { { _, _ -> } }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppsPageBody(s: FrontEndState, a: FrontEndActions, modifier: Modifier, onLaunch: (HomeApp.LaunchableApp) -> Unit) {
     val ctx = LocalContext.current
     remember { HomeFolders.load(ctx); HomeWidgets.load(ctx); HomeHidden.load(ctx); AppsView.load(ctx); AppsGrid.load(ctx); true }
     val colors = MaterialTheme.colorScheme
@@ -305,7 +342,7 @@ internal fun AndroidAppsPage(s: FrontEndState, a: FrontEndActions, modifier: Mod
     }
     val folders = HomeFolders.folders
     val byKey = remember(s.androidApps) { s.androidApps.associateBy { it.key } }
-    val byPkg = remember(s.androidApps) { s.androidApps.filterNot { it.work }.groupBy { it.packageName }.mapNotNull { (pkg, apps) -> apps.singleOrNull()?.let { pkg to it } }.toMap() }
+    val byPkg = remember(s.androidApps) { s.androidApps.filterNot { it.work || it.linux != null }.groupBy { it.packageName }.mapNotNull { (pkg, apps) -> apps.singleOrNull()?.let { pkg to it } }.toMap() }
     LaunchedEffect(byPkg) { if (byPkg.isNotEmpty()) HomeFolders.migrateMembers(ctx) { byPkg[it]?.key } }
     val member: (String) -> HomeApp.LaunchableApp? = { byKey[it] ?: byPkg[it] }
     val pins = HomePins.pinned
@@ -313,14 +350,15 @@ internal fun AndroidAppsPage(s: FrontEndState, a: FrontEndActions, modifier: Mod
     val q = query.trim()
     val filter = AppsView.filter
     val sort = AppsView.sort
-    val entries: List<AppEntry> = remember(s.androidApps, folders, q, filter, sort, pins, hidden) {
+    val choosing = AppsView.choosing
+    val entries: List<AppEntry> = remember(s.androidApps, folders, q, filter, sort, pins, hidden, choosing) {
         val kept = s.androidApps.filter { AppsView.keeps(it) }
-        val shortcuts = if (filter == AppsView.ALL) pins.map { AppEntry.Shortcut(it) } else emptyList()
+        val shortcuts = if (filter == AppsView.ALL && !choosing) pins.map { AppEntry.Shortcut(it) } else emptyList()
         if (q.isNotEmpty()) {
             (kept.map { AppEntry.App(it) } + shortcuts).mapNotNull { e -> searchRank(e.label, q)?.let { it to e } }
                 .sortedWith(compareBy<Pair<Int, AppEntry>> { it.first }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.second.label })
                 .map { it.second }
-        } else if (filter != AppsView.ALL) {
+        } else if (filter != AppsView.ALL || choosing) {
             kept.map { AppEntry.App(it) }.sortedWith(AppsView.comparator())
         } else {
             val folderEntries = folders.mapNotNull { f ->
@@ -378,6 +416,8 @@ internal fun AndroidAppsPage(s: FrontEndState, a: FrontEndActions, modifier: Mod
                         }
                     },
                 ) {
+                    if (choosing) PrimaryButton(stringResource(R.string.apps_choose_done), compact = true, modifier = Modifier.testTag("apps-choose-done"), onClick = { AppsView.choosing = false })
+                    else HeaderIconButton(stringResource(R.string.apps_choose), Icons.Filled.VisibilityOff, "apps-choose") { AppsView.choosing = true }
                     AppsFilterButton()
                     AppsSortButton()
                     AppsAppearanceButton(a)
@@ -442,7 +482,7 @@ internal fun AndroidAppsPage(s: FrontEndState, a: FrontEndActions, modifier: Mod
                     state = grid,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = padH, end = if (scroller) padH + 22.dp else padH, top = 12.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = padH, end = if (scroller) padH + 22.dp else padH, top = 12.dp, bottom = 96.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (widgetsShown) item(key = "widgets", span = { GridItemSpan(maxLineSpan) }) {
@@ -529,6 +569,8 @@ private fun appsFilterLabel(filter: String): String = stringResource(
         AppsView.DOWNLOADED -> R.string.apps_filter_downloaded
         AppsView.SYSTEM -> R.string.apps_filter_system
         AppsView.HIDDEN -> R.string.apps_filter_hidden
+        AppsView.ANDROID -> R.string.apps_filter_android
+        AppsView.LINUX -> R.string.apps_filter_linux
         else -> R.string.apps_filter_all
     },
 )
@@ -719,6 +761,21 @@ private fun AppIcon(app: HomeApp.LaunchableApp, size: androidx.compose.ui.unit.D
 }
 
 @Composable
+private fun SourceBadge(app: HomeApp.LaunchableApp, modifier: Modifier) {
+    val size = (AppsGrid.iconDp * 0.36f).dp
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.offset(x = size / 4, y = size / 4).size(size).clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface).border(1.dp, LocalPalette.current.line, CircleShape).padding(size / 8),
+    ) {
+        if (app.linux != null) Image(painterResource(R.drawable.ic_badge_linux), stringResource(R.string.apps_badge_linux), Modifier.fillMaxSize())
+        else androidx.compose.material3.Icon(Icons.Filled.Android, stringResource(R.string.apps_badge_android), tint = AndroidGreen, modifier = Modifier.fillMaxSize())
+    }
+}
+
+private val AndroidGreen = androidx.compose.ui.graphics.Color(0xFF3DDC84)
+
+@Composable
 private fun AppTile(
     app: HomeApp.LaunchableApp, folderId: String?, first: Boolean,
     onLaunch: (HomeApp.LaunchableApp) -> Unit, onNewFolder: (HomeApp.LaunchableApp) -> Unit,
@@ -726,8 +783,16 @@ private fun AppTile(
 ) {
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        TileFrame(app.key, first, onClick = { onLaunch(app) }, onMenu = { menu = true }) {
-            AppIcon(app, AppsGrid.iconDp.dp)
+        val ctx = LocalContext.current
+        val hidden = app.key in HomeHidden.keys
+        val faded = AppsView.choosing && hidden
+        TileFrame(app.key, first, onClick = { if (AppsView.choosing) HomeHidden.set(ctx, app.key, !hidden) else onLaunch(app) }, onMenu = { menu = true }) {
+            Box(Modifier.graphicsLayer { alpha = if (faded) 0.35f else 1f }) {
+                AppIcon(app, AppsGrid.iconDp.dp)
+                if (AppsGrid.badges) SourceBadge(app, Modifier.align(Alignment.BottomEnd))
+            }
+            if (faded) androidx.compose.material3.Icon(Icons.Filled.VisibilityOff, stringResource(R.string.apps_filter_hidden),
+                tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 4.dp).size(16.dp))
             if (AppsGrid.labels) TileLabel(app.label)
         }
         AppMenu(app, folderId, menu, onDismiss = { menu = false }, onNewFolder = onNewFolder, onChangeIcon = onChangeIcon)
@@ -752,6 +817,7 @@ private fun AppMenu(
         }
     }
     val isHidden = app.key in HomeHidden.keys
+    val linuxOpen = LocalLinuxOpen.current
     AnchoredMenu(open, onDismiss = onDismiss, title = app.label, compact = true, minWidth = 200.dp) { first ->
         if (choosing) {
             val others = HomeFolders.folders.filter { it.id != folderId }
@@ -798,7 +864,10 @@ private fun AppMenu(
                 onDismiss()
                 HomeIcons.clear(ctx, app.key)
             }
-            MenuItem(stringResource(R.string.apps_app_info), checked = false) {
+            if (app.linux != null) {
+                MenuItem(stringResource(R.string.apps_open_in_desktop), checked = false) { onDismiss(); linuxOpen(app, true) }
+                MenuItem(stringResource(R.string.apps_run_standalone), checked = false) { onDismiss(); linuxOpen(app, false) }
+            } else MenuItem(stringResource(R.string.apps_app_info), checked = false) {
                 onDismiss()
                 runCatching { HomeApp.openAppInfo(ctx, app) }
             }

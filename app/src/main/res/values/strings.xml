@@ -30,7 +30,7 @@
     <string name="steamvr_recovery_cancel">Keep open</string>
     <string name="steamvr_recovery_restarting">Resetting graphics and reopening SteamVR…</string>
     <string name="steamvr_recovery_failed">DroidDeck could not restart automatically. Close the app completely, then reopen it.</string>
-    <string name="app_name">DroidDeck</string>
+    <string name="app_name">DeskDeck</string>
     <string name="steam_wall_label" translatable="false">DroidDeck Wall</string>
     <string name="wall_settings_fps" translatable="false">Frame rate (fps)</string>
     <string name="wall_settings_match" translatable="false">Match screen</string>
@@ -932,7 +932,7 @@
     <string name="setup_gpu_unsupported_detail">No compatible graphics backend is available; %1$s may show a black screen</string>
     <string name="setup_runtime">Linux runtime</string>
     <string name="setup_runtime_progress">%1$s · %2$d%%</string>
-    <string name="setup_runtime_missing">Not installed · about 3 GB, installed on first Play</string>
+    <string name="setup_runtime_missing">Not installed · about 3 GB, installed when you first open the desktop</string>
     <string name="setup_installed">Installed</string>
     <string name="setup_runtime_update">%1$s · update available</string>
     <string name="setup_runtime_current">%1$s · up to date</string>
@@ -1475,7 +1475,7 @@
     <string name="ctrl_layout">Layout</string>
     <string name="ctrl_edit">Edit</string>
     <string name="ctrl_reset">Reset</string>
-    <string name="content_android_apps">Android apps</string>
+    <string name="content_android_apps">Apps</string>
     <string name="content_apps_count">%1$d apps</string>
     <string name="content_no_android_apps">No launchable Android apps found.</string>
     <string name="apps_search_hint">Search apps</string>
@@ -1500,6 +1500,17 @@
     <string name="apps_icon_medium">Medium</string>
     <string name="apps_icon_large">Large</string>
     <string name="apps_hide_names">Hide app names</string>
+    <string name="apps_source_badges">Show Android and Linux badges</string>
+    <string name="setup_tab_advanced">Advanced</string>
+    <string name="advanced_group_programs">Programs</string>
+    <string name="advanced_add_program">Add a program</string>
+    <string name="advanced_add_program_hint">A script, an AppImage, a Linux or Windows program, or a Flatpak bundle. It joins the app grid.</string>
+    <string name="apps_badge_linux">Linux app</string>
+    <string name="apps_badge_android">Android app</string>
+    <string name="apps_open_in_desktop">Open in the desktop</string>
+    <string name="apps_run_standalone">Open on its own</string>
+    <string name="linux_app_needs_runtime">Install the Linux runtime in Setup to open %1$s.</string>
+    <string name="linux_app_open_failed">Couldn\'t open %1$s: %2$s</string>
     <string name="apps_spacing">Spacing</string>
     <string name="apps_spacing_tight">Tight</string>
     <string name="apps_spacing_normal">Normal</string>
@@ -1525,6 +1536,10 @@
     <string name="apps_filter_downloaded">Downloaded</string>
     <string name="apps_filter_system">System</string>
     <string name="apps_filter_hidden">Hidden</string>
+    <string name="apps_filter_android">Android apps</string>
+    <string name="apps_filter_linux">Linux apps</string>
+    <string name="apps_choose">Choose which apps to show</string>
+    <string name="apps_choose_done">Done</string>
     <string name="apps_hide">Hide</string>
     <string name="apps_unhide">Show in apps</string>
     <string name="apps_shortcut_remove">Remove shortcut</string>
@@ -3242,8 +3257,8 @@
     <string name="setup_tab_glasses">Smart glasses</string>
     <string name="setup_glasses_scope">Display and head-tracking settings are shared across DroidDeck menus, games and desktop sessions.</string>
     <string name="setup_glasses_connect">Connect smart glasses to change their display and tracking settings. Your saved settings are kept when you disconnect.</string>
-    <string name="setup_ready">Ready to play</string>
-    <string name="setup_not_ready">Not ready to play yet</string>
+    <string name="setup_ready">Ready</string>
+    <string name="setup_not_ready">Not ready yet</string>
     <string name="setup_ready_runtime">runtime %1$s</string>
     <string name="setup_ready_limit_off">process limit off</string>
     <string name="setup_ready_signed_in">signed in as %1$s</string>

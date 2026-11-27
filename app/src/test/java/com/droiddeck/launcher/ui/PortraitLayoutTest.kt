@@ -42,8 +42,8 @@ class PortraitLayoutTest {
                 LauncherLayout(portrait.value, Color.Gray,
                     Modifier.size(if (portrait.value) 480.dp else 800.dp, if (portrait.value) 800.dp else 480.dp).testTag("launcher"),
                     navigation = {
-                        if (portrait.value) BottomBar(state, "steam", {}, {}, actions, Modifier)
-                        else SideRail(state, "steam", {}, {}, actions, Modifier.fillMaxHeight())
+                        if (portrait.value) BottomBar(state, "android-apps", {}, {}, actions, Modifier)
+                        else SideRail(state, "android-apps", {}, {}, actions, Modifier.fillMaxHeight())
                     },
                 ) {
                     var count by remember { mutableIntStateOf(0) }
@@ -56,7 +56,7 @@ class PortraitLayoutTest {
         compose.mainClock.advanceTimeBy(1_000)
         val root = compose.onNodeWithTag("launcher").getUnclippedBoundsInRoot()
         val pane = compose.onNodeWithTag("pane").getUnclippedBoundsInRoot()
-        val steam = compose.onNodeWithTag("rail-steam").getUnclippedBoundsInRoot()
+        val steam = compose.onNodeWithTag("rail-android-apps").getUnclippedBoundsInRoot()
         assertEquals(root.left, pane.left)
         assertEquals(root.right, pane.right)
         assertTrue(steam.top >= pane.bottom)
@@ -66,7 +66,7 @@ class PortraitLayoutTest {
         compose.mainClock.advanceTimeBy(1_000)
         compose.onNodeWithText("Count 1").assertExists()
         val landscapePane = compose.onNodeWithTag("pane").getUnclippedBoundsInRoot()
-        val rail = compose.onNodeWithTag("rail-steam").getUnclippedBoundsInRoot()
+        val rail = compose.onNodeWithTag("rail-android-apps").getUnclippedBoundsInRoot()
         assertTrue(landscapePane.left > rail.right)
         assertEquals(0.dp, landscapePane.top)
         compose.runOnIdle { portrait.value = true }
@@ -79,8 +79,8 @@ class PortraitLayoutTest {
         NavTabs.reset(ctx)
         NavTabs.setHidden(ctx, "android-apps", false)
         val all = NavTabs.listed(stateWithAppsAndSession).filter { NavTabs.place(stateWithAppsAndSession, it) != TabPlace.HIDDEN }
-        NavTabs.rearrange(ctx, stateWithAppsAndSession, all, emptyList())
-        val selected = mutableStateOf("steam")
+        NavTabs.rearrange(ctx, stateWithAppsAndSession, all, NavTabs.listed(stateWithAppsAndSession) - all.toSet())
+        val selected = mutableStateOf("android-apps")
         compose.setContent {
             DroidDeckTheme {
                 BottomBar(stateWithAppsAndSession, selected.value, { selected.value = it }, {}, actions, Modifier.size(320.dp, 64.dp))
@@ -103,15 +103,15 @@ class PortraitLayoutTest {
         val context = org.robolectric.RuntimeEnvironment.getApplication()
         RailLabels.set(context, false)
         compose.setContent {
-            DroidDeckTheme { BottomBar(state, "steam", {}, {}, actions, Modifier.size(480.dp, 64.dp)) }
+            DroidDeckTheme { BottomBar(state, "android-apps", {}, {}, actions, Modifier.size(480.dp, 64.dp)) }
         }
         compose.mainClock.advanceTimeBy(1_000)
-        compose.onNodeWithText("Library").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Library").assertIsDisplayed()
+        compose.onNodeWithText("Desktop").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Desktop").assertIsDisplayed()
         compose.runOnIdle { RailLabels.set(context, true) }
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
         compose.mainClock.advanceTimeBy(1_000)
-        compose.onNodeWithText("Library").assertIsDisplayed()
+        compose.onNodeWithText("Desktop").assertIsDisplayed()
     }
 
     @Test fun compactHeaderKeepsAllActionsReachable() {

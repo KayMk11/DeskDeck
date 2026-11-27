@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DesktopWindows
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Apps
@@ -201,6 +202,7 @@ internal fun railLabelIcon(key: String): Pair<Int, ImageVector> = when (key) {
     "stores" -> R.string.rail_stores to Icons.Filled.LocalOffer
     "downloads" -> R.string.stores_tab_downloads to Icons.Filled.Download
     "desktop" -> R.string.rail_desktop to Icons.Filled.DesktopWindows
+    "flathub" -> R.string.flathub_name to Icons.Filled.Storefront
     "components" -> R.string.rail_components to Icons.Filled.Layers
     "agent" -> R.string.rail_agent to Icons.Filled.Terminal
     "android-apps" -> R.string.rail_apps to Icons.Filled.Apps

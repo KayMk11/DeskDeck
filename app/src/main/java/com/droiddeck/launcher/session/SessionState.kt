@@ -67,6 +67,8 @@ object SessionState {
     @Volatile
     var programArgs: List<String> = emptyList()
     @Volatile
+    var desktopApp = false
+    @Volatile
     var gameId: String? = null
     @Volatile
     var steamUi: String? = null

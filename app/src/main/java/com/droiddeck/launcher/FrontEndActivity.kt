@@ -1590,7 +1590,8 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
                             startActivity(Intent(this, SessionActivity::class.java)
                                 .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
                                 .putExtra(SessionService.EXTRA_PROGRAM, com.droiddeck.launcher.runtime.FlatpakManager.LAUNCHER)
-                                .putExtra(SessionService.EXTRA_PROGRAM_ARGS, arrayOf(id)))
+                                .putExtra(SessionService.EXTRA_PROGRAM_ARGS, arrayOf(id))
+                                .putExtra(SessionService.EXTRA_DESKTOP_APP, true))
                         },
                         onRom = { g ->
                             val e = emulatorList.first { it.id == g.emulatorId }
@@ -1872,6 +1873,7 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
                         },
                         onAppIconsChanged = { refreshAndroidApps() },
                         onAndroidApp = { app, displayId -> launchAndroidApp(app, displayId) },
+                        onLinuxApp = { app, inDesktop -> launchLinuxApp(app, inDesktop) },
                         onBackActionsInverted = { inverted ->
                             SessionPrefs.setBackActionsInverted(this, inverted)
                             backActionsInverted = inverted
@@ -2414,7 +2416,11 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
         if (homeAppSelected) HomePins.refresh(this)
         Thread({
             val apps = runCatching { HomeApp.launchableApps(this) }.getOrDefault(emptyList())
-            ui.post { if (seq == androidAppsListing) androidApps = apps }
+            ui.post {
+                if (seq != androidAppsListing) return@post
+                HomeHidden.hideNewDefaults(this, apps)
+                androidApps = apps
+            }
         }, "home-apps").start()
     }
 
@@ -2465,6 +2471,67 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
         } else {
             open()
         }
+    }
+
+    private fun launchLinuxApp(app: HomeApp.LaunchableApp, inDesktop: Boolean?) {
+        val entry = app.linux ?: return
+        if (!LinuxRuntime.isInstalled(this)) {
+            android.widget.Toast.makeText(this, getString(R.string.linux_app_needs_runtime, app.label), android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        val command = com.droiddeck.launcher.runtime.LinuxApps.command(LinuxRuntime.rootDir(this), entry)
+        if (command == null) {
+            android.widget.Toast.makeText(this, getString(R.string.linux_app_open_failed, app.label, entry.exec), android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        val desktopRunning = SessionState.running && !SessionState.stopRequested && SessionState.mode == SessionService.MODE_DESKTOP
+        if (inDesktop ?: desktopRunning) {
+            val desktop = Intent(this, SessionActivity::class.java).putExtra(SessionService.EXTRA_MODE, SessionService.MODE_DESKTOP)
+            when {
+                desktopRunning -> startActivity(Intent(this, SessionActivity::class.java).setAction(SessionService.ACTION_RESUME)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                !SessionState.running -> if (!startSession(desktop)) return
+                else -> pendingSwitch = desktop
+            }
+            launchInDesktop(app.label, command, entry.path, wait = !desktopRunning)
+            return
+        }
+        val next = Intent(this, SessionActivity::class.java)
+            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
+            .putExtra(SessionService.EXTRA_PROGRAM, command.first())
+            .putExtra(SessionService.EXTRA_PROGRAM_ARGS, command.drop(1).toTypedArray())
+            .putExtra(SessionService.EXTRA_DESKTOP_APP, true)
+        when {
+            !SessionState.running -> startSessionOrWait(next)
+            SessionState.mode == SessionService.MODE_RUN && SessionState.program == command.first() && SessionState.programArgs == command.drop(1) ->
+                startActivity(Intent(this, SessionActivity::class.java).setAction(SessionService.ACTION_RESUME)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            else -> pendingSwitch = next
+        }
+    }
+
+    private fun launchInDesktop(label: String, argv: List<String>, cwd: String?, wait: Boolean) {
+        val request = org.json.JSONObject().put("kind", "launch").put("argv", org.json.JSONArray(argv))
+        cwd?.let { request.put("cwd", it) }
+        Thread({
+            // Plasma takes a while to come up after a cold start, and the desktop may first need installing.
+            val deadline = android.os.SystemClock.uptimeMillis() + if (wait) LINUX_DESKTOP_WAIT_MS else LINUX_LAUNCH_WAIT_MS
+            var failure: String? = null
+            while (true) {
+                if (SessionState.running && SessionState.mode == SessionService.MODE_DESKTOP) {
+                    val result = runCatching { com.droiddeck.launcher.agent.AgentGuest.call(this, request, LINUX_LAUNCH_WAIT_MS, trusted = true) }
+                    val answer = result.getOrNull()
+                    if (answer?.optBoolean("ok") == true) { failure = null; break }
+                    val error = answer?.optJSONObject("error")
+                    failure = error?.optString("message") ?: result.exceptionOrNull()?.message
+                    val code = error?.optString("code") ?: (result.exceptionOrNull() as? com.droiddeck.launcher.agent.AgentException)?.code
+                    if (code !in LINUX_LAUNCH_RETRY) break
+                }
+                if (android.os.SystemClock.uptimeMillis() > deadline) break
+                Thread.sleep(1_000)
+            }
+            failure?.let { ui.post { android.widget.Toast.makeText(this, getString(R.string.linux_app_open_failed, label, it), android.widget.Toast.LENGTH_LONG).show() } }
+        }, "linux-launch").start()
     }
 
     private fun offerHomeScreen() {
@@ -3704,6 +3771,9 @@ class FrontEndActivity : ComponentActivity(), com.droiddeck.launcher.ui.AgentPet
         private const val COMPONENT_RESTORE_MS = 60_000L
         private const val LINK_PANEL_MS = 1500L
         private const val SESSION_SWITCH_WAIT_MS = 30_000L
+        private const val LINUX_LAUNCH_WAIT_MS = 10_000L
+        private const val LINUX_DESKTOP_WAIT_MS = 600_000L
+        private val LINUX_LAUNCH_RETRY = setOf("NO_DESKTOP", "AGENT_UNAVAILABLE", "NO_ACTIVE_SESSION", "TIMEOUT")
         private const val SESSION_SWITCH_POLL_MS = 250L
         private const val KEY_PENDING_SWITCH = "pending_switch"
         private const val KEY_COMPAT_LAUNCH = "compat_launch"

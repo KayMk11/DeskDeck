@@ -42,7 +42,8 @@ pipewire() {
         stop = DESKTOP.index(HELPER + ' stop')
         self.assertLess(start, plasma)
         self.assertLess(plasma, stop)
-        self.assertLess(stop, DESKTOP.index('droiddeck-steam-launch bigpicture'))
+        self.assertLess(stop, DESKTOP.index('exit $rc'))
+        self.assertNotIn('droiddeck-steam-launch bigpicture', DESKTOP)
 
     def test_steam_session_keeps_its_pipewire_startup(self):
         self.assertEqual(1, SESSION.count(HELPER + ' start'))

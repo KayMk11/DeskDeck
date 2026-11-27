@@ -314,6 +314,7 @@ class FrontEndActions(
     val onIntegrationAppInfo: () -> Unit = {},
     val onIntegrationLocation: () -> Unit = {},
     val onAndroidApp: (HomeApp.LaunchableApp, Int?) -> Unit = { _, _ -> },
+    val onLinuxApp: (HomeApp.LaunchableApp, Boolean?) -> Unit = { _, _ -> },
     val onBackActionsInverted: (Boolean) -> Unit = {},
     val onRefreshPhantomStatus: () -> Unit = {},
     val onOpenDeveloperOptions: (Int?) -> Unit = {},
@@ -826,7 +827,8 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
                     },
                     { selected = it },
                     onAndroidAppClick = { app ->
-                        if (s.secondScreenDisplays.isEmpty() && s.ownScreen == null) a.onAndroidApp(app, null)
+                        if (app.linux != null) a.onLinuxApp(app, null)
+                        else if (s.secondScreenDisplays.isEmpty() && s.ownScreen == null) a.onAndroidApp(app, null)
                         else appToChooseDisplay = app
                     },
                     onOpenDeveloperOptions = requestChildProcessToggle,

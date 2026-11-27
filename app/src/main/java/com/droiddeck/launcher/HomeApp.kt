@@ -25,6 +25,7 @@ import kotlin.math.roundToInt
 
 object HomeApp {
     private const val ICON_DP = 72
+    const val LINUX_PACKAGE = "linux"
     private const val GAME_SPACE = "cn.nubia.gamelauncher"
     private const val GAME_SPACE_ADD = "cn.nubia.gamelauncher.action.GAME_MANAGER"
     private val GAME_SPACE_GAMES = Uri.parse("content://cn.nubia.gamelauncher.db.AppAddProvider/appadd")
@@ -40,6 +41,7 @@ object HomeApp {
         val updatedAt: Long = 0L,
         val user: UserHandle? = null,
         val userSerial: Long = 0L,
+        val linux: com.droiddeck.launcher.runtime.LinuxApps.Entry? = null,
     ) {
         val component get() = ComponentName(packageName, className)
         val key get() = appKey(packageName, className, userSerial)
@@ -154,7 +156,18 @@ object HomeApp {
                 )
             }
         }
-        return apps.distinctBy { it.key }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
+        val linux = runCatching { com.droiddeck.launcher.runtime.LinuxApps.load(context) }.getOrDefault(emptyList()).map { (entry, bitmap) ->
+            val key = appKey(LINUX_PACKAGE, entry.id, 0L)
+            val base = bitmap?.let { android.graphics.drawable.BitmapDrawable(context.resources, it) }
+            val icon = runCatching {
+                (overrides[key]?.let { IconPack.drawable(context, it.pack, it.drawable, densityDpi) }
+                    ?: base?.let { pack?.plated(it, iconPx, densityDpi, appColors) }
+                    ?: base)?.toBitmap(iconPx, iconPx)
+            }.getOrNull()
+            val changed = entry.file.lastModified()
+            LaunchableApp(entry.name, LINUX_PACKAGE, entry.id, icon, installedAt = changed, updatedAt = changed, linux = entry)
+        }
+        return (apps + linux).distinctBy { it.key }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
     }
 
     fun launch(context: Context, app: LaunchableApp, displayId: Int? = null, bounds: Rect? = null) {
@@ -167,7 +180,7 @@ object HomeApp {
         runCatching { context.getSystemService(LauncherApps::class.java).hasShortcutHostPermission() }.getOrDefault(false)
 
     fun shortcuts(context: Context, app: LaunchableApp): List<ShortcutInfo> {
-        if (!canUseShortcuts(context)) return emptyList()
+        if (app.linux != null || !canUseShortcuts(context)) return emptyList()
         val query = LauncherApps.ShortcutQuery()
             .setPackage(app.packageName)
             .setActivity(app.component)
@@ -250,7 +263,7 @@ object HomeApp {
             .startAppDetailsActivity(app.component, app.user ?: Process.myUserHandle(), null, null)
     }
 
-    fun canUninstall(app: LaunchableApp): Boolean = !app.system && !app.work
+    fun canUninstall(app: LaunchableApp): Boolean = app.linux == null && !app.system && !app.work
 
     fun uninstall(context: Context, app: LaunchableApp) {
         context.startActivity(

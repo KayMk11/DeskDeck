@@ -26,9 +26,9 @@ internal object DeveloperTools {
 
 internal object NavTabs {
     const val MORE = "more"
-    val ALL = listOf("steam", "desktop", "games", "downloads", "setup", "updates", "stores", "soundtracks", "components", "storage", "sync", "decky", "boot-movies", "android-apps", "agent")
-    val DEFAULT_SHELVED = setOf("stores", "soundtracks", "components", "storage", "sync", "decky", "boot-movies", "agent")
-    val DEFAULT_HIDDEN = setOf("android-apps", "agent")
+    val ALL = listOf("android-apps", "desktop", "flathub", "setup", "updates", "components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
+    val DEFAULT_SHELVED = setOf("components", "storage", "sync", "steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
+    val DEFAULT_HIDDEN = setOf("steam", "games", "downloads", "stores", "soundtracks", "decky", "boot-movies", "agent")
     private val SHELVED_WHEN_NEW = setOf("storage", "sync", "decky", "boot-movies", "agent")
     private val OLD_ORDER = listOf("steam", "games", "soundtracks", "stores", "downloads", "desktop", "agent", "components", "android-apps", "storage", "sync", "setup", "updates")
     private val OLD_SHELVED = setOf("soundtracks", "agent", "storage", "sync")
@@ -73,7 +73,6 @@ internal object NavTabs {
             if (!legacy.stores) hide += setOf("stores", "downloads")
             if (!legacy.soundtracks) hide += "soundtracks"
             if (!legacy.agent) hide += "agent"
-            if (!com.droiddeck.launcher.HomeApp.isHomeScreenEnabled(context) || !com.droiddeck.launcher.HomeApp.isDefault(context)) hide += "android-apps"
             SessionPrefs.setNavTabHidden(context, hide)
         }
         SessionPrefs.finishTabSwitchMigration(context, LAYOUT_VERSION)
@@ -95,13 +94,13 @@ internal object NavTabs {
         else -> true
     }
 
-    // Apps only has content when DroidDeck is the home app, so it follows that state on each change and
-    // otherwise stays wherever the user put it.
+    // Apps is DeskDeck's main page and lists apps whether or not DeskDeck is the home app, so becoming the
+    // home app reveals it and leaving that role never hides it.
     fun syncHomeApps(context: Context, homeSelected: Boolean) {
         val seen = SessionPrefs.appsTabHomeSeen(context)
         SessionPrefs.setAppsTabHomeSeen(context, homeSelected)
-        if (seen == homeSelected || (seen == null && !homeSelected)) return
-        setHidden(context, "android-apps", !homeSelected)
+        if (seen == homeSelected || !homeSelected) return
+        setHidden(context, "android-apps", false)
     }
 
     fun hideable(key: String) = key != "setup"

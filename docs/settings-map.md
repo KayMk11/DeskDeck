@@ -51,6 +51,7 @@ Links of the form `droiddeck://settings/<section>` open a Settings section direc
 | SteamGridDB API key | Settings › Launcher (`droiddeck://settings/launcher`) | artwork, steamgriddb |
 | Source | Settings › Launcher (`droiddeck://settings/launcher`) | mirror, china |
 | HTTP proxy | Settings › Launcher (`droiddeck://settings/launcher`) |  |
+| Add a program | Settings › Advanced (`droiddeck://settings/advanced`) | script, appimage, exe, elf, program, flatpak, run |
 | Latest session logs | Settings › Developer (`droiddeck://settings/developer`) | logs, log, bug, report, crash, zip |
 | Session logs | Settings › Developer (`droiddeck://settings/developer`) | logs |
 | Game debug logs | Settings › Developer (`droiddeck://settings/developer`) | logs, wine, proton |
